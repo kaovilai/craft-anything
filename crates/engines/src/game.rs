@@ -541,9 +541,9 @@ pub struct Inventory {
     pub epic_launcher: Option<PathBuf>,
     /// A C++ compiler Unreal can use (Visual Studio, Xcode, or the selected Linux engine's bundled Clang).
     pub cpp_tools: bool,
-    /// Rust's installer, when it's on this computer but no cargo is: the setup then says to run
-    /// `rustup default` (#2252) instead of pointing at rustup.rs, whose installer refuses to run
-    /// over an existing install.
+    /// Rust's installer, when it's on this computer but no cargo there builds: the setup then
+    /// says to run `rustup default` (#2252) instead of pointing at rustup.rs, whose installer
+    /// refuses to run over an existing install.
     pub rustup: Option<PathBuf>,
 }
 
@@ -612,7 +612,10 @@ pub fn inventory(p: &Places) -> Inventory {
     engines.extend(unity_editors(p));
     engines.extend(unreal_installs(p));
     engines.extend(godot_installs(p));
-    let cargo = p.use_path.then(|| craft_anything_platform::which("cargo")).flatten();
+    // Asked, not assumed: a cargo that is only rustup's proxy prints "no default toolchain
+    // configured" and builds nothing (#2252). This runs on the worker that builds the inventory,
+    // never the UI thread.
+    let cargo = p.use_path.then(|| craft_anything_platform::which("cargo")).flatten().filter(|c| cargo_builds(c));
     if let Some(cargo) = cargo.clone() {
         engines.push(Installed { builder: Builder::Rust, version: String::new(), program: cargo });
     }
@@ -642,6 +645,19 @@ pub fn inventory(p: &Places) -> Inventory {
 /// "2022.3.10f1" / "5.4" / "4.4.1" as comparable numbers.
 fn version_key(v: &str) -> Vec<u64> {
     v.split(|c: char| !c.is_ascii_digit()).filter(|s| !s.is_empty()).filter_map(|s| s.parse().ok()).collect()
+}
+
+/// Whether the `cargo` at `path` can build: rustup's cargo proxy exits non-zero with "no default
+/// toolchain configured" until a toolchain is selected (#2252), so the program is asked rather
+/// than its file being trusted.
+pub fn cargo_builds(cargo: &Path) -> bool {
+    Process::new(cargo)
+        .args(["--version"])
+        .timeout(std::time::Duration::from_secs(10))
+        .label("the cargo check")
+        .remediation("Craft Anything asks cargo for its version to see whether a toolchain is selected; this said no.")
+        .run()
+        .is_ok_and(|out| out.success)
 }
 
 fn subdirs(dir: &Path) -> Vec<PathBuf> {

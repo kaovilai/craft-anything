@@ -476,6 +476,8 @@ fn engines_list(ctx: &mut Ctx<'_>, _params: Value) -> Result<ToolOutput, ToolErr
         "engines": engines,
         "deep_mode": {"enabled": s.deep_mode, "ghidra": s.ghidra_launcher().map(|p| p.display().to_string())},
         "game_engines": builders,
+        // #2252: rustup without a cargo that builds — the setup says to run `rustup default`.
+        "rustup": inv.rustup.map(|p| p.display().to_string()),
     })))
 }
 

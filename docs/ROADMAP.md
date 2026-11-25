@@ -2493,6 +2493,11 @@ Gaps found while using the app for real projects.
       engine inventory finds rustup, the Rust setup step, status line and modal say to run
       `rustup default stable`, and so does a new build's missing-cargo stop
       — claimed: kaovilai, branch bugfix/rustup-toolchain-message
+- [x] A cargo that is only rustup's proxy no longer reads as Rust being ready (#2252's follow-up):
+      the inventory and the new-build stop ask `cargo --version` — the program's own answer, not
+      a reading of rustup's settings — on the worker that builds the inventory and before the
+      build's first turn, and `engines_list` reports the rustup-without-toolchain state
+      — claimed: kaovilai, branch bugfix/rustup-toolchain-readiness
 
 ### R2.10 Pinned builds
 Owner: maintainers · Status: in progress

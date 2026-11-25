@@ -949,7 +949,7 @@ impl Worker {
         // have moved it to another stack, which the recorded one doesn't show. An API builder over
         // SSH builds here, so only a coding agent on the other computer skips it.
         if !study::tools_run_remotely(remote, api.is_some()) && stacks::toolchain_in(&ws.app_dir()).is_none() {
-            missing_program_stop(&ws.manifest.stack, |p| craft_anything_platform::which(p).is_some())?;
+            missing_program_stop(&ws.manifest.stack, program_there)?;
         }
         let api_resumed = api.as_ref().is_some_and(crate::agent::ApiConversation::resumed);
         let kept = KeptHistory { in_mode: kept_without_api.in_mode || api_resumed, elsewhere: kept_without_api.elsewhere };
@@ -1873,4 +1873,10 @@ fn missing_program_stop(stack: &str, have: impl Fn(&str) -> bool) -> Result<(), 
     Err(ToolError::new(ErrorCode::BadSettings, format!("{stack} is built with {program}, which isn't on this computer.")).with_remediation(format!(
         "{from}, then try again; or start the project again with another stack (\"Build with\" in the app, --build-with in the CLI)."
     )))
+}
+
+/// Whether a program a build needs is there and works: rustup's cargo proxy builds nothing until
+/// a toolchain is selected (#2252), so cargo is asked, like the engine inventory asks it.
+fn program_there(p: &str) -> bool {
+    craft_anything_platform::which(p).is_some_and(|found| p != "cargo" || craft_anything_engines::game::cargo_builds(&found))
 }
